@@ -2,139 +2,212 @@ package com.chaos.gabinator_android
 
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
-import android.content.ContentValues.TAG
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.hardware.usb.UsbAccessory
 import android.hardware.usb.UsbManager
 import android.os.Build
 import android.os.Bundle
+import android.os.ParcelFileDescriptor
 import android.util.Log
-import android.view.View.OnKeyListener
 import android.widget.Button
-import androidx.activity.OnBackPressedCallback
+import android.widget.ImageView
+import android.widget.TextView
 import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.snackbar.Snackbar
+import java.io.ByteArrayOutputStream
+import java.io.FileDescriptor
+import java.io.FileInputStream
+import kotlin.concurrent.thread
 
-var LOG: String = ""
+var LOG1: String = ""
 
 fun print_log(message: String, type: String) {
-    LOG += "$type: $message"
+    LOG1 += "$type: $message\n"
     Log.d(type, message)
 }
+var input_stream: FileInputStream? = null
+var parcel_file : ParcelFileDescriptor? = null
+var file_descriptor: FileDescriptor? = null
+var usb_manager: UsbManager? = null
+
 
 class Main : AppCompatActivity() {
-    private fun USB(accesorio : UsbAccessory?) {
+    fun print_alert(message: String) {
+        Snackbar.make(
+            findViewById(R.id.menu),
+            message,
+            Snackbar.LENGTH_SHORT
+        ).show()
+    }
+
+    var accesorio: UsbAccessory? = null
+    var permisos = false
+
+    val Reciver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent == null) return
+            synchronized(this) {
+                when (intent.action) {
+                    "com.android.example.USB_PERMISSION" -> {
+                        print_log(
+                            "Pidiendo permisos accesorio...",
+                            "Main/Reciver/USB_Permission"
+                        )
+                        if (intent.getBooleanExtra(
+                                UsbManager.EXTRA_PERMISSION_GRANTED,
+                                false
+                            )
+                        ) {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                accesorio = intent.getParcelableExtra<UsbAccessory?>(
+                                    UsbManager.EXTRA_ACCESSORY,
+                                    UsbAccessory::class.java
+                                )
+                            } else {
+                                accesorio =
+                                    intent.getParcelableExtra(UsbManager.EXTRA_ACCESSORY) as UsbAccessory?
+                            }
+                            print_log("Permisos obtenidos", "Main/Reciver/USB_Permission")
+                            print_alert("Permisos obtenidos")
+                            permisos = true
+
+                            try{parcel_file = usb_manager?.openAccessory(accesorio)}
+                            catch(e: Exception){print_alert("No se pudo abrir " + e.message)}
+
+                            if (parcel_file == null){
+                                print_log("Cannot open Accesory","USB_Transfer_Manager")
+                                print_alert("Cannot open Accesory")
+                                return
+                            }
+                            file_descriptor = parcel_file!!.fileDescriptor
+                            print_log("Accesory opened correctly","USB_Transfer_Manager")
+                            input_stream = FileInputStream(file_descriptor)
+                            USB(accesorio)
+                        } else {
+                            print_alert("Permisos denegados")
+                            print_log("Permisos denegados", "Main/Reciver/USB_Permission")
+                        }
+
+                    }
+
+
+                    "android.hardware.usb.action.USB_ACCESSORY_DETACHED" -> {
+                        //USB Detached
+                        print_log("USB Desconectado", "Main/Reciver/Detached")
+                        print_alert("USB Desconectado")
+                        permisos = false
+                        accesorio = null
+                    }
+
+                    "android.hardware.usb.action.USB_ACCESSORY_ATTACHED" -> {
+                        print_log(
+                            "USB Conectando, pidiendo permisos",
+                            "Main/Reciver/Attached"
+                        )
+                        print_alert("USB Conectando")
+                    }
+
+                }
+            }
+        }
+    }
+
+    private fun USB_Transfer_Manager(accesorio: UsbAccessory?) {
+        thread {
+            var bitmap_data: Bitmap?
+        while (permisos) {
+            try {
+                var byo = ByteArrayOutputStream()
+                val by = ByteArray(16384)
+                var BytesRead = by.size
+                print_log("Reading data...","USB_Transfer_Manager/")
+                while (BytesRead != -1 && BytesRead == by.size) {
+                    BytesRead = input_stream?.read(by, 0, by.size)!!
+                    /*if (BytesRead == -1 || BytesRead != by.size){
+                        break
+                    }*/
+                    byo.write(by, 0, BytesRead)
+                    print_log(BytesRead.toString(),"USB_Transfer_Manager")
+                }
+                print_log("Data recived -> ${byo.size()} bytes long","USB_Transfer_Manager/")
+                bitmap_data = BitmapFactory.decodeByteArray(
+                    byo.toByteArray(),
+                    0,
+                    byo.size()
+                )
+                print_log("Saving data","USB_Transfer_Manager/")
+                runOnUiThread { val image = findViewById<ImageView>(R.id.Image)
+                    if (bitmap_data == null){
+                        print_log("Reciver Image is null","USB_Transfer_Manager/RUNONUI/")
+                        return@runOnUiThread
+                    }
+                    if (image == null) {
+                        print_log("Image is null","USB_Transfer_Manager/RUNONUI/")
+                        return@runOnUiThread
+                    }
+                    image.setImageBitmap(bitmap_data)
+                }
+            } catch (io: Exception) {
+                io.message?.let { print_log(it, "USB_Transfer_Manager/Exeption") }
+            }
+
+        }
+        }
+    }
+
+    private fun USB(accesorio: UsbAccessory?) {
         if (accesorio == null) {
-            print_log("Accesorio sin obtener","USB")
+            print_log("Accesorio sin obtener", "USB")
+            print_alert("Accesorio sin obtener")
             return
         }
-        print_log("Accesorio obtenido con exito -> $accesorio, continuando...","USB")
+        print_log("Accesorio obtenido con exito -> $accesorio, continuando...", "USB")
+        print_alert("Accesorio obtenido con exito -> $accesorio, continuando...")
         setContentView(R.layout.usb_mode)
+        USB_Transfer_Manager(accesorio)
     }
 
-    private fun handle_back_button(){
+    private fun handle_back_button() {
         onBackPressedDispatcher.addCallback {
             setContentView(R.layout.menu)
+            set_listeners()
         }
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.menu)
+    private fun set_listeners(){
         val USB = findViewById<Button>(R.id.USB)
         val TCP = findViewById<Button>(R.id.TCP)
         val LOG = findViewById<Button>(R.id.LOG)
 
-        var accesorio: UsbAccessory? = null
-
-        handle_back_button()
-
-        print_log("Reciver Creandose", "Main/OnCreate")
-        val Reciver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                if (intent == null) return
-                synchronized(this) {
-                    when (intent.action) {
-                        "com.android.example.USB_PERMISSION" -> {
-                            print_log(
-                                "Pidiendo permisos accesorio...",
-                                "Main/Reciver/USB_Permission"
-                            )
-                            if (intent.getBooleanExtra(
-                                    UsbManager.EXTRA_PERMISSION_GRANTED,
-                                    false
-                                )
-                            ) {
-                                if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
-                                    accesorio = intent.getParcelableExtra<UsbAccessory?>(UsbManager.EXTRA_ACCESSORY,
-                                        UsbAccessory::class.java
-                                    )
-                                }
-                                else{
-                                    accesorio = intent.getParcelableExtra(UsbManager.EXTRA_ACCESSORY) as UsbAccessory?
-                                }
-                                print_log("Permisos obtenidos", "Main/Reciver/USB_Permission")
-                                USB(accesorio)
-                            } else {
-                                print_log("Permisos denegados", "Main/Reciver/USB_Permission")
-                            }
-
-                        }
-
-
-                        "android.hardware.usb.action.USB_ACCESSORY_DETACHED" -> {
-                            //USB Detached
-                            print_log("USB Desconectado", "Main/Reciver/Detached")
-                        }
-
-                        "android.hardware.usb.action.USB_ACCESSORY_ATTACHED" -> {
-                            print_log("USB Conectando, pidiendo permisos", "Main/Reciver/Attached")
-
-                        }
-
-                    }
-                }
-            }
-        }
-
-        print_log("Reciver creado","Main/OnCreate")
-        val manager: UsbManager = getSystemService(Context.USB_SERVICE) as UsbManager
 
         val permiso_usb = PendingIntent.getBroadcast(
             this, 0, Intent("com.android.example.USB_PERMISSION"),
-            PendingIntent.FLAG_IMMUTABLE
+            PendingIntent.FLAG_MUTABLE
         )
-        val filter = IntentFilter()
-        filter.addAction("com.android.example.USB_PERMISSION")
-        filter.addAction(UsbManager.ACTION_USB_ACCESSORY_ATTACHED)
-        filter.addAction(UsbManager.ACTION_USB_ACCESSORY_DETACHED)
-        if (Build.VERSION.SDK_INT > 33) {
-            registerReceiver(Reciver, filter, RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(Reciver, filter)
-        }
 
         //Accion al apretar el boton de USB
+
         USB.setOnClickListener {
+            if (permisos) {
+                USB(accesorio)
+            }
             print_log("Clickeado USB", "Main/OnCreate")
-            if (accesorio == null){
-                val accessoryList: Array<out UsbAccessory>? = manager.accessoryList
-                if (accessoryList == null){
-                    print_log("No hay accesorios disponibles","Main/OnCreate")
-                    Snackbar.make(
-                        findViewById(R.id.menu),
-                        "No hay accesorios disponibles",
-                        Snackbar.LENGTH_SHORT
-                    ).show()
+            if (accesorio == null) {
+                val accessoryList: Array<out UsbAccessory>? = usb_manager?.accessoryList
+                if (accessoryList == null) {
+                    print_log("No hay accesorios disponibles", "Main/OnCreate")
+                    print_alert("No hay accesorios disponibles")
 
                     return@setOnClickListener
                 }
                 accesorio = accessoryList[0]
             }
-            manager.requestPermission(accesorio, permiso_usb)
+            usb_manager?.requestPermission(accesorio, permiso_usb)
         }
         //Accion al apretar el boton de TCP
         TCP.setOnClickListener {
@@ -145,7 +218,39 @@ class Main : AppCompatActivity() {
         LOG.setOnClickListener {
             print_log("Clickeado LOG", "Main/OnCreate")
             println("LOG")
+            setContentView(R.layout.log)
+            findViewById<TextView>(R.id.log_text).text = LOG1
         }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.menu)
+        usb_manager = getSystemService(Context.USB_SERVICE) as UsbManager
+
+
+        handle_back_button()
+
+        print_log("Reciver Creandose", "Main/OnCreate")
+        val filter = IntentFilter()
+        filter.addAction("com.android.example.USB_PERMISSION")
+        filter.addAction(UsbManager.ACTION_USB_ACCESSORY_ATTACHED)
+        filter.addAction(UsbManager.ACTION_USB_ACCESSORY_DETACHED)
+        if (Build.VERSION.SDK_INT > 33) {
+            registerReceiver(Reciver, filter, RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(Reciver, filter)
+        }
+        print_log("Reciver creado", "Main/OnCreate")
+
+
+        set_listeners()
+
+
+
+
+
 
 
     }
