@@ -23,10 +23,15 @@ import java.io.ByteArrayOutputStream
 import java.io.FileDescriptor
 import java.io.FileInputStream
 import kotlin.concurrent.thread
+import kotlin.system.exitProcess
 
 var LOG1: String = ""
+var show_log = false
 
 fun print_log(message: String, type: String) {
+    if (show_log == false){
+        return
+    }
     LOG1 += "$type: $message\n"
     Log.d(type, message)
 }
@@ -34,10 +39,14 @@ var input_stream: FileInputStream? = null
 var parcel_file : ParcelFileDescriptor? = null
 var file_descriptor: FileDescriptor? = null
 var usb_manager: UsbManager? = null
+var permisos = false
 
 
 class Main : AppCompatActivity() {
     fun print_alert(message: String) {
+        if (show_log == false){
+            return  
+        }
         Snackbar.make(
             findViewById(R.id.menu),
             message,
@@ -46,8 +55,7 @@ class Main : AppCompatActivity() {
     }
 
     var accesorio: UsbAccessory? = null
-    var permisos = false
-
+    var abierto = false
     val Reciver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent == null) return
@@ -63,6 +71,7 @@ class Main : AppCompatActivity() {
                                 false
                             )
                         ) {
+                            permisos = true
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                                 accesorio = intent.getParcelableExtra<UsbAccessory?>(
                                     UsbManager.EXTRA_ACCESSORY,
@@ -74,7 +83,6 @@ class Main : AppCompatActivity() {
                             }
                             print_log("Permisos obtenidos", "Main/Reciver/USB_Permission")
                             print_alert("Permisos obtenidos")
-                            permisos = true
 
                             try{parcel_file = usb_manager?.openAccessory(accesorio)}
                             catch(e: Exception){print_alert("No se pudo abrir " + e.message)}
@@ -87,7 +95,8 @@ class Main : AppCompatActivity() {
                             file_descriptor = parcel_file!!.fileDescriptor
                             print_log("Accesory opened correctly","USB_Transfer_Manager")
                             input_stream = FileInputStream(file_descriptor)
-                            USB(accesorio)
+                            var USB_ACT = Intent(getApplicationContext(), com.chaos.gabinator_android.ImageView::class.java)
+                            startActivity(USB_ACT)
                         } else {
                             print_alert("Permisos denegados")
                             print_log("Permisos denegados", "Main/Reciver/USB_Permission")
@@ -117,65 +126,10 @@ class Main : AppCompatActivity() {
         }
     }
 
-    private fun USB_Transfer_Manager(accesorio: UsbAccessory?) {
-        thread {
-            var bitmap_data: Bitmap?
-        while (permisos) {
-            try {
-                var byo = ByteArrayOutputStream()
-                val by = ByteArray(16384)
-                var BytesRead = by.size
-                print_log("Reading data...","USB_Transfer_Manager/")
-                while (BytesRead != -1 && BytesRead == by.size) {
-                    BytesRead = input_stream?.read(by, 0, by.size)!!
-                    /*if (BytesRead == -1 || BytesRead != by.size){
-                        break
-                    }*/
-                    byo.write(by, 0, BytesRead)
-                    print_log(BytesRead.toString(),"USB_Transfer_Manager")
-                }
-                print_log("Data recived -> ${byo.size()} bytes long","USB_Transfer_Manager/")
-                bitmap_data = BitmapFactory.decodeByteArray(
-                    byo.toByteArray(),
-                    0,
-                    byo.size()
-                )
-                print_log("Saving data","USB_Transfer_Manager/")
-                runOnUiThread { val image = findViewById<ImageView>(R.id.Image)
-                    if (bitmap_data == null){
-                        print_log("Reciver Image is null","USB_Transfer_Manager/RUNONUI/")
-                        return@runOnUiThread
-                    }
-                    if (image == null) {
-                        print_log("Image is null","USB_Transfer_Manager/RUNONUI/")
-                        return@runOnUiThread
-                    }
-                    image.setImageBitmap(bitmap_data)
-                }
-            } catch (io: Exception) {
-                io.message?.let { print_log(it, "USB_Transfer_Manager/Exeption") }
-            }
-
-        }
-        }
-    }
-
-    private fun USB(accesorio: UsbAccessory?) {
-        if (accesorio == null) {
-            print_log("Accesorio sin obtener", "USB")
-            print_alert("Accesorio sin obtener")
-            return
-        }
-        print_log("Accesorio obtenido con exito -> $accesorio, continuando...", "USB")
-        print_alert("Accesorio obtenido con exito -> $accesorio, continuando...")
-        setContentView(R.layout.usb_mode)
-        USB_Transfer_Manager(accesorio)
-    }
 
     private fun handle_back_button() {
         onBackPressedDispatcher.addCallback {
-            setContentView(R.layout.menu)
-            set_listeners()
+            exitProcess(0)
         }
     }
 
@@ -194,7 +148,9 @@ class Main : AppCompatActivity() {
 
         USB.setOnClickListener {
             if (permisos) {
-                USB(accesorio)
+                //USB(accesorio)
+                var USB_ACT = Intent(getApplicationContext(), com.chaos.gabinator_android.ImageView::class.java)
+                startActivity(USB_ACT)
             }
             print_log("Clickeado USB", "Main/OnCreate")
             if (accesorio == null) {
@@ -202,7 +158,6 @@ class Main : AppCompatActivity() {
                 if (accessoryList == null) {
                     print_log("No hay accesorios disponibles", "Main/OnCreate")
                     print_alert("No hay accesorios disponibles")
-
                     return@setOnClickListener
                 }
                 accesorio = accessoryList[0]
@@ -213,6 +168,7 @@ class Main : AppCompatActivity() {
         TCP.setOnClickListener {
             print_log("Clickeado TCP", "Main/OnCreate")
             println("TCP")
+            startActivity(Intent(getApplicationContext(), com.chaos.gabinator_android.Tcp_settings::class.java))
         }
         //Accion al apretar el boton de LOG
         LOG.setOnClickListener {
