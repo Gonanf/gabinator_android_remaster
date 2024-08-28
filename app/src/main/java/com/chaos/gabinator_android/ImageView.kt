@@ -16,7 +16,7 @@ class ImageView : AppCompatActivity() {
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.usb_mode)
+        setContentView(R.layout.activity_tcp_image_view)
         ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         thread {
             var bitmap_data: Bitmap?
@@ -35,7 +35,7 @@ class ImageView : AppCompatActivity() {
                         byo.size()
                     )
                     print_log("Saving data","USB_Transfer_Manager/")
-                        runOnUiThread { val image = findViewById<ImageView>(R.id.Image)
+                        runOnUiThread { val image = findViewById<ImageView>(R.id.Image_tcp)
                             if (bitmap_data == null){
                                 print_log("Reciver Image is null","USB_Transfer_Manager/RUNONUI/")
                                 return@runOnUiThread

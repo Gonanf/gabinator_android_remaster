@@ -26,7 +26,7 @@ import kotlin.concurrent.thread
 import kotlin.system.exitProcess
 
 var LOG1: String = ""
-var show_log = false
+var show_log = true
 
 fun print_log(message: String, type: String) {
     if (show_log == false){
@@ -44,9 +44,6 @@ var permisos = false
 
 class Main : AppCompatActivity() {
     fun print_alert(message: String) {
-        if (show_log == false){
-            return  
-        }
         Snackbar.make(
             findViewById(R.id.menu),
             message,

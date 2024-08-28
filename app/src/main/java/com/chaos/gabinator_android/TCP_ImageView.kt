@@ -29,10 +29,10 @@ class TCP_ImageView : AppCompatActivity() {
                     var byo = ByteArrayOutputStream()
                     val by = ByteArray(1024)
                     var BytesRead = by.size
-                    while (input_stream.available() != 0) {
+                    do{
                         BytesRead = input_stream.read(by, 0, by.size)
                         byo.write(by, 0, BytesRead)
-                    }
+                    }while( (input_stream.available() != 0) )
                     println(byo.size())
                     bitmap_data = BitmapFactory.decodeByteArray(
                         byo.toByteArray(),
