@@ -171,8 +171,8 @@ class Main : AppCompatActivity() {
         LOG.setOnClickListener {
             print_log("Clickeado LOG", "Main/OnCreate")
             println("LOG")
-            setContentView(R.layout.log)
-            findViewById<TextView>(R.id.log_text).text = LOG1
+            startActivity(Intent(getApplicationContext(), com.chaos.gabinator_android.Log_View::class.java))
+
         }
     }
 

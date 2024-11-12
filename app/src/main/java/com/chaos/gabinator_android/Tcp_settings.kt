@@ -36,6 +36,7 @@ class Tcp_settings : AppCompatActivity() {
             }
             thread {
                 socket = Socket(ip.text.toString(),puerto.text.toString().toInt())
+                socket!!.soTimeout = 10000
                 println(socket)
             }
             startActivity(Intent(getApplicationContext(), com.chaos.gabinator_android.TCP_ImageView::class.java))

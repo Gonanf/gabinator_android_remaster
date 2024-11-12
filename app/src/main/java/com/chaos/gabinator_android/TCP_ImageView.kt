@@ -22,33 +22,38 @@ class TCP_ImageView : AppCompatActivity() {
         setContentView(R.layout.activity_tcp_image_view)
         thread {
             var bitmap_data: Bitmap?
+            var byo = ByteArrayOutputStream()
             while (permisos) {
                 try {
                     var input_stream = socket?.getInputStream()
                     var output_stream = socket?.getOutputStream()
-                    val size = input_stream?.available()
-                    val buffer = size?.let { ByteArray(it) } // Buffer size
-                    var bytesRead: Int = 1
-                    val byteArrayOutputStream = ByteArrayOutputStream()
-                    // Read the input stream into the byte array output stream
+                    val by = ByteArray(1024)
+                    var BytesRead = by.size
+                    var pos_term = 0
                     if (input_stream != null) {
-                        while (true) {
-                            bytesRead = input_stream.read(buffer)
-                            if (bytesRead == -1 || bytesRead == 0){
+                        do{
+                            BytesRead = input_stream.read(by, 0, by.size)
+                            pos_term = by.indexOf('\n'.code.toByte())
+                            if (pos_term != -1){
+                                byo.write(by.take(pos_term-1).toByteArray(), 0, pos_term-1)
+                                println(byo.size())
                                 break
                             }
-                            println("$bytesRead/"+input_stream.available())
-                            byteArrayOutputStream.write(buffer, 0, bytesRead)
-                            if (input_stream.available() == 0){
-                                break
+                            else{
+                                byo.write(by, 0, BytesRead)
                             }
-                        }
+                        }while( (by.last().toInt().toChar() != '\n') )
                     }
-                    println("getting image")
-                    // Convert the buffered data to a byte array
-                    val imageData = byteArrayOutputStream.toByteArray()
-                    bitmap_data = BitmapFactory.decodeByteArray(imageData,0,imageData.size)
-                    println("H "+ bitmap_data.height + " W " + bitmap_data.width)
+                    print_log("ADATA: "+byo.size(),"DEBUG")
+                    bitmap_data = BitmapFactory.decodeByteArray(
+                        byo.toByteArray(),
+                        0,
+                        byo.size()
+                    )
+                    byo = ByteArrayOutputStream()
+                    if (pos_term != -1){
+                        byo.write(by.takeLast(by.size - pos_term-1).toByteArray(),0,by.size - pos_term-1)
+                    }
                     runOnUiThread {
                         val image = findViewById<ImageView>(R.id.Image_tcp)
                         if (bitmap_data == null) {
