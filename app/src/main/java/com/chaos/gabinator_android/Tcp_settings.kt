@@ -8,6 +8,10 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.textfield.TextInputLayout
 import java.net.Socket
 import kotlin.concurrent.thread
+import io.ktor.network.selector.*
+import io.ktor.network.sockets.*
+import io.ktor.utils.io*
+import io.ktor.coroutines.*
 
 var socket: Socket? = null
 class Tcp_settings : AppCompatActivity() {
@@ -34,13 +38,8 @@ class Tcp_settings : AppCompatActivity() {
 
                 return@setOnClickListener
             }
-            thread {
-                socket = Socket(ip.text.toString(),puerto.text.toString().toInt())
-                socket!!.soTimeout = 10000
-                println(socket)
-            }
+		socket = aSocket(SelectorManager(Dispatchers.IO)).tcp().connect(ip.text.toString(),puerto.text.toString().toInt())
             startActivity(Intent(getApplicationContext(), com.chaos.gabinator_android.TCP_ImageView::class.java))
-        }
     }
 
 }
