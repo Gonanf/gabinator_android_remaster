@@ -25,13 +25,17 @@ class TCP_ImageView : AppCompatActivity() {
         setContentView(R.layout.activity_tcp_image_view)
         thread{
             val input = socket!!.getInputStream()
-            while (permisos){val usize_bytes = input.read()
-            print_log("THE USIZE SIZE IS " + usize_bytes,"DEBGU")
-            var packet_size: Long = 0
+
+            while (permisos){
+                val usize_bytes = input.read()
+                var packet_size: Long = 0
             if (usize_bytes == 64){
                 var bytes_size = ByteArray(8)
                 for (i in bytes_size.indices){
                     val temp = input.read()
+                    if (temp == -1){
+                        return@thread
+                    }
                     bytes_size[i] = temp.toByte()
                     print_log(bytes_size[i].toString() +"/"+temp.toString(),"xd")
                 }
@@ -40,7 +44,11 @@ class TCP_ImageView : AppCompatActivity() {
             }
             var bytes_bitmap = ByteArray(packet_size.toInt())
             for(i in 0..<packet_size){
-                bytes_bitmap[i.toInt()] = input.read().toByte()
+                val temp = input.read()
+                if (temp == -1){
+                    return@thread
+                }
+                bytes_bitmap[i.toInt()] = temp.toByte()
             }
             print_log(bytes_bitmap.size.toString(),"DEBug")
             val bitmap = BitmapFactory.decodeByteArray(bytes_bitmap,0, packet_size.toInt())
