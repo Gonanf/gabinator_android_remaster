@@ -14,7 +14,7 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
-
+	multiDexEnabled = true
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -37,10 +37,14 @@ android {
     buildFeatures {
         viewBinding = true
     }
+    packaging{
+        resources.pickFirsts += "META-INF/INDEX.LIST"
+        resources.pickFirsts += "META-INF/io.netty.versions.properties"
+    }
 }
 
 dependencies {
-
+	implementation("androidx.multidex:multidex:2.0.1")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
@@ -52,6 +56,7 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-	implementation("io.ktor:ktor-server-netty:1.6.0")
-	implementation("io.ktor:ktor-network:1.6.0")
+	implementation(libs.ktor.server.netty)
+	implementation(libs.ktor.network)
+    implementation(libs.ktor.client)
 }

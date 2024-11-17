@@ -8,12 +8,12 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.textfield.TextInputLayout
 import java.net.Socket
 import kotlin.concurrent.thread
-import io.ktor.network.selector.*
-import io.ktor.network.sockets.*
-import io.ktor.utils.io*
-import io.ktor.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
-var socket: Socket? = null
+var socket:
+        Socket? = null
 class Tcp_settings : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -25,21 +25,28 @@ class Tcp_settings : AppCompatActivity() {
         var IP_parsed = arrayOf<String>()
         conectar.setOnClickListener {
             println("CONECTANDO")
-            println(ip.text.toString()+":"+puerto.text.toString().toInt())
-            for (i in ip.text.split(".", limit = 4))
-            {
-                if (i.toInt() > 255 || i.toInt() < 0){
+            println(ip.text.toString() + ":" + puerto.text.toString().toInt())
+            for (i in ip.text.split(".", limit = 4)) {
+                if (i.toInt() > 255 || i.toInt() < 0) {
                     continue
                 }
                 IP_parsed = IP_parsed.plus(i)
 
             }
-            if (IP_parsed.size == 0 || IP_parsed.size > 4){
+            if (IP_parsed.size == 0 || IP_parsed.size > 4) {
 
                 return@setOnClickListener
             }
-		socket = aSocket(SelectorManager(Dispatchers.IO)).tcp().connect(ip.text.toString(),puerto.text.toString().toInt())
-            startActivity(Intent(getApplicationContext(), com.chaos.gabinator_android.TCP_ImageView::class.java))
-    }
+            thread {
+                socket = Socket(ip.text.toString(),puerto.text.toString().toInt())
+            }
+            startActivity(
+                Intent(
+                    getApplicationContext(),
+                    com.chaos.gabinator_android.TCP_ImageView::class.java
+                )
+            )
+        }
 
+    }
 }
