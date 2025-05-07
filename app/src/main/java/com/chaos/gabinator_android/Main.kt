@@ -1,10 +1,12 @@
 package com.chaos.gabinator_android
 
+import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.hardware.usb.UsbAccessory
@@ -18,6 +20,8 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import com.google.android.material.internal.ContextUtils.getActivity
 import com.google.android.material.snackbar.Snackbar
 import java.io.ByteArrayOutputStream
 import java.io.FileDescriptor
@@ -50,6 +54,7 @@ class Main : AppCompatActivity() {
             Snackbar.LENGTH_SHORT
         ).show()
     }
+
 
     var accesorio: UsbAccessory? = null
     var abierto = false
@@ -181,7 +186,15 @@ class Main : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.menu)
         usb_manager = getSystemService(Context.USB_SERVICE) as UsbManager
+        @SuppressLint("RestrictedApi")
+        var pm = getActivity(this)?.packageManager
+        var isUSBAccessory = pm?.hasSystemFeature(PackageManager.FEATURE_USB_ACCESSORY)
 
+        if (!isUSBAccessory!!){
+            print_alert("This device is not compatible with the USB Accesory mode")
+        }else {
+            print_alert("This device is compatible with the USB Accesory mode")
+        }
 
         handle_back_button()
 
@@ -189,12 +202,8 @@ class Main : AppCompatActivity() {
         val filter = IntentFilter()
         filter.addAction("com.android.example.USB_PERMISSION")
         filter.addAction(UsbManager.ACTION_USB_ACCESSORY_ATTACHED)
-        filter.addAction(UsbManager.ACTION_USB_ACCESSORY_DETACHED)
-        if (Build.VERSION.SDK_INT > 33) {
-            registerReceiver(Reciver, filter, RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(Reciver, filter)
-        }
+        ContextCompat.registerReceiver(this,Reciver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+
         print_log("Reciver creado", "Main/OnCreate")
 
 
